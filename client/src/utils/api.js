@@ -64,6 +64,44 @@ export const api = {
     return Promise.all(snapshot.docs.map(d => hydrateTweet(d)));
   },
 
+  async getFeed() {
+    const user = auth.currentUser;
+    if (!user) return [];
+
+    // Get current user's following list
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    const following = userDoc.exists() ? (userDoc.data().following || []) : [];
+
+    // Include the user's own tweets + followed users' tweets
+    const feedAuthors = [user.uid, ...following];
+
+    if (feedAuthors.length === 0) return [];
+
+    // Firestore `in` queries support max 30 values, so batch if needed
+    const batches = [];
+    for (let i = 0; i < feedAuthors.length; i += 30) {
+      const batch = feedAuthors.slice(i, i + 30);
+      const q = query(
+        collection(db, 'tweets'),
+        where('author', 'in', batch),
+        orderBy('createdAt', 'desc')
+      );
+      batches.push(getDocs(q));
+    }
+
+    const snapshots = await Promise.all(batches);
+    const allDocs = snapshots.flatMap(s => s.docs);
+
+    // Sort merged results by createdAt descending
+    allDocs.sort((a, b) => {
+      const aTime = a.data().createdAt || '';
+      const bTime = b.data().createdAt || '';
+      return bTime.localeCompare(aTime);
+    });
+
+    return Promise.all(allDocs.map(d => hydrateTweet(d)));
+  },
+
   async getUserTweets(userId) {
     const q = query(
       collection(db, 'tweets'), 

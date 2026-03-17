@@ -15,7 +15,7 @@ const Home = () => {
 
   const loadTweets = async () => {
     try {
-      const data = await api.getTweets();
+      const data = await api.getFeed();
       setTweets(data);
     } catch (err) {
       console.error(err);

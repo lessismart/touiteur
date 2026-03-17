@@ -36,8 +36,14 @@ const Profile = () => {
   };
 
   const handleFollow = async () => {
-    const result = await api.followUser(profileUser._id);
-    setIsFollowing(result.followers.includes(currentUser.uid || currentUser._id));
+    try {
+      const result = await api.followUser(profileUser._id);
+      setProfileUser(result);
+      setIsFollowing(result.followers?.includes(currentUser.uid || currentUser._id));
+    } catch (error) {
+      console.error('Follow error:', error);
+      alert('Failed to follow/unfollow. Please try again.');
+    }
   };
 
   const handleTweetCreated = (tweet) => {
