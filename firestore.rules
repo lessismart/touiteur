@@ -3,7 +3,13 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      // Users can fully write their own document
+      allow create, delete: if request.auth != null && request.auth.uid == userId;
+      // Users can update their own document, OR update only the followers array on another user's document
+      allow update: if request.auth != null && (
+        request.auth.uid == userId ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followers'])
+      );
     }
     match /tweets/{tweetId} {
       allow read: if request.auth != null;
